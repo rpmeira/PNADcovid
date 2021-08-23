@@ -1,0 +1,282 @@
+---
+title: "PNADcovid"
+description:
+author:
+  - name: Rafael Peixoto
+    affiliation: Universidade Estadual de Campinas
+date: 08-20-2021
+site: distill::distill_website
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T)
+library(tidyverse)
+library(rmarkdown)
+```
+
+
+# Introdução
+
+Para maiores informações sobre o pacote `COVIDIBGE`, olhar o [manual](https://rpubs.com/gabriel-assuncao-ibge/covid).
+
+## Obter os dados
+
+Instalar e carregar o pacote.
+
+```{r, eval=FALSE}
+install.packages("COVIDIBGE")
+```
+
+```{r}
+library(COVIDIBGE)
+```
+
+
+Baixar os dados (demora um pouco).
+
+```{r, eval=FALSE}
+get_covid(year = 2020, month = 5, savedir = getwd())
+get_covid(year = 2020, month = 6, savedir = getwd())
+get_covid(year = 2020, month = 7, savedir = getwd())
+get_covid(year = 2020, month = 8, savedir = getwd())
+get_covid(year = 2020, month = 9, savedir = getwd())
+get_covid(year = 2020, month = 10, savedir = getwd())
+get_covid(year = 2020, month = 11, savedir = getwd())
+```
+
+Ler os dados, modificar com o dicionário e salvar em um arquivo do formato do R (mais rápido de carregar).
+
+```{r, eval=FALSE}
+read_covid(microdata="PNAD_COVID_052020.csv") %>%
+  covid_labeller(dictionary.file="Dicionario_PNAD_COVID_052020_20210726.xls") %>%
+  saveRDS(file = "PNADcovid05.rds")
+read_covid(microdata="PNAD_COVID_062020.csv") %>%
+  covid_labeller(dictionary.file="Dicionario_PNAD_COVID_062020_20210726.xls") %>%
+  saveRDS(file = "PNADcovid06.rds")
+read_covid(microdata="PNAD_COVID_072020.csv") %>%
+  covid_labeller(dictionary.file="Dicionario_PNAD_COVID_072020_20210726.xls") %>%
+  saveRDS(file = "PNADcovid07.rds")
+read_covid(microdata="PNAD_COVID_082020.csv") %>%
+  covid_labeller(dictionary.file="Dicionario_PNAD_COVID_082020_20210726.xls") %>%
+  saveRDS(file = "PNADcovid08.rds")
+read_covid(microdata="PNAD_COVID_092020.csv") %>%
+  covid_labeller(dictionary.file="Dicionario_PNAD_COVID_092020_20210726.xls") %>%
+  saveRDS(file = "PNADcovid09.rds")
+read_covid(microdata="PNAD_COVID_102020.csv") %>%
+  covid_labeller(dictionary.file="Dicionario_PNAD_COVID_102020_20210726.xls") %>%
+  saveRDS(file = "PNADcovid10.rds")
+read_covid(microdata="PNAD_COVID_112020.csv") %>%
+  covid_labeller(dictionary.file="Dicionario_PNAD_COVID_112020_20210726.xls") %>%
+  saveRDS(file = "PNADcovid11.rds")
+```
+
+Carregar os dados a partir do arquivo no formato do R.
+
+```{r}
+PNADdados05 <- readRDS(file = "PNADcovid05.rds")
+PNADdados06 <- readRDS(file = "PNADcovid06.rds")
+PNADdados07 <- readRDS(file = "PNADcovid07.rds")
+PNADdados08 <- readRDS(file = "PNADcovid08.rds")
+PNADdados09 <- readRDS(file = "PNADcovid09.rds")
+PNADdados10 <- readRDS(file = "PNADcovid10.rds")
+PNADdados11 <- readRDS(file = "PNADcovid11.rds")
+```
+
+Podemos também juntar todos os dados em um único `data.frame`. 
+
+```{r, eval=FALSE}
+PNADtotal <- PNADdados05 %>% 
+  full_join(PNADdados06) %>%
+  full_join(PNADdados07) %>%
+  full_join(PNADdados08) %>%
+  full_join(PNADdados09) %>%
+  full_join(PNADdados10) %>%
+  full_join(PNADdados11)
+```
+
+Para não ter que repetir isso toda vez, podemos salvar esse `data.frame` em um arquivo no formato do R.
+
+```{r, eval=FALSE}
+saveRDS(PNADtotal, file = "PNADtotal.rds")
+```
+
+Carregando esse arquivo:
+
+```{r}
+PNADtotal <- readRDS(file = "PNADtotal.rds")
+```
+
+Entretanto, o autor do pacote recomenda partir desses dados amostrais e analisar as características da população, por meio do pacote `survey`. Para tanto, precisamos transformar o objeto em um objeto que pode ser lido por esse pacote, por meio da função `covid_design`.
+
+```{r}
+PNADdesign05 <- covid_design(PNADdados05)
+```
+
+Carregando o pacote `survey`.
+
+```{r}
+library(survey)
+```
+
+## Análise dos dados
+
+Gráficos com valores amostrais:
+
+```{r}
+PNADtotal %>%
+  select(`UF`, "Sexo" = `A003`) %>%
+  ggplot() +
+  aes(y = `UF`, fill = `Sexo`) +
+  geom_bar() +
+  theme_classic() +
+  labs(
+    title = "Sexo",
+    subtitle = "Número total",
+    caption = "Fonte: Elaboração própria. Dados do IBGE"
+  ) +
+  scale_x_continuous(labels = scales::unit_format(unit = "K", scale = 1e-3)) +
+  theme(panel.grid.major.x = element_line(colour = gray(0.85),  size = 0.1))
+```
+
+```{r}
+PNADtotal %>%
+  select(`UF`, "Sexo" = `A003`) %>%
+  ggplot() +
+  aes(y = `UF`, fill = `Sexo`) +
+  geom_bar(position="fill") +
+  geom_vline(xintercept = 0.5) +
+  theme_classic() +
+  labs(
+    title = "Sexo",
+    subtitle = "proporção",
+    caption = "Fonte: Elaboração própria. Dados do IBGE",
+    x = "Proporção"
+  ) +
+  scale_x_continuous(labels = scales::label_percent())
+```
+
+```{r}
+PNADtotal %>%
+  select(`UF`, "Cor" = `A004`) %>%
+  ggplot() +
+  aes(y = `UF`, fill = `Cor`) +
+  geom_bar() +
+  theme_classic() +
+  labs(
+    title = "Cor",
+    subtitle = "Número total",
+    caption = "Fonte: Elaboração própria. Dados do IBGE"
+  ) +
+  scale_x_continuous(labels = scales::unit_format(unit = "K", scale = 1e-3)) +
+  theme(panel.grid.major.x = element_line(colour = gray(0.85),  size = 0.1))
+```
+
+```{r}
+PNADtotal %>%
+  select(`UF`, "Cor" = `A004`) %>%
+  ggplot() +
+  aes(y = `UF`, fill = `Cor`) +
+  geom_bar(position="fill") +
+  geom_vline(xintercept = 0.5) +
+  theme_classic() +
+  labs(
+    title = "Cor",
+    subtitle = "proporção",
+    caption = "Fonte: Elaboração própria. Dados do IBGE",
+    x = "Proporção"
+  ) +
+  scale_x_continuous(labels = scales::label_percent())
+```
+
+```{r}
+PNADtotal %>%
+  select("Cor" = `A004`, "Horas trabalhadas" = `C008`) %>%
+  ggplot() +
+  aes(y = `Horas trabalhadas`, fill = `Cor`) +
+  geom_boxplot(na.rm = T) +
+  theme_classic() +
+  labs(
+    title = "Horas trabalhadas",
+    subtitle = "",
+    caption = "Fonte: Elaboração própria. Dados do IBGE",
+    x = ""
+  )
+```
+
+Gráficos com valores para a população, calculado com o pacote `survey`:
+
+```{r}
+svytotal(x = ~ interaction(`A003`, `UF`), design = PNADdesign05, na.rm = TRUE)
+```
+
+```{r}
+svyhist(formula = ~ `C008`, design = PNADdesign05, na.rm = TRUE)
+```
+
+Alternativamente, podemos utilizar a função `ggsurvey` para plotar os objetos do tipo `survey`
+
+```{r}
+ggsurvey <- function(design = NULL, mapping = NULL, ...) {
+  if (!inherits(design, "survey.design")) {
+    stop("'design' should be a 'survey.design' object.")
+  }
+  if (!requireNamespace("survey", quietly = TRUE)) {
+    stop("survey package is required.")
+  }
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("ggplot2 package is required.")
+  }
+  data <- design$variables
+  data$.weights <- weights(design)
+  
+  if(is.null(mapping)) {
+    mapping <- ggplot2::aes()
+  }
+  
+  mapping$weight <- ggplot2::aes_string(weight = ".weights")$weight
+  
+  ggplot2::ggplot(data, mapping, ...)
+}
+```
+
+```{r}
+ggsurvey(design = PNADdesign05) +
+  aes(y = `UF`, fill = `A003`) +
+  geom_bar() +
+  theme_classic() +
+  labs(
+    title = "Sexo",
+    subtitle = "Número total",
+    caption = "Fonte: Elaboração própria. Dados do IBGE"
+  ) +
+  scale_x_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) +
+  theme(panel.grid.major.x = element_line(colour = gray(0.85),  size = 0.1))
+```
+
+```{r}
+ggsurvey(design = PNADdesign05) +
+  aes(y = `UF`, fill = `A004`) +
+  geom_bar(position = "fill") +
+  theme_classic() +
+  labs(
+    title = "Cor",
+    subtitle = "Proporção",
+    caption = "Fonte: Elaboração própria. Dados do IBGE",
+    x = ""
+  ) +
+ scale_x_continuous(labels = scales::label_percent())
+```
+
+```{r}
+ggsurvey(design = PNADdesign05) +
+  aes(x = `C008`, fill = `A004`) +
+  geom_histogram() +
+  theme_classic() +
+  labs(
+    title = "Cor",
+    subtitle = "Proporção",
+    caption = "Fonte: Elaboração própria. Dados do IBGE",
+    x = "Horas trabalhadas"
+  ) +
+  scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6))
+```

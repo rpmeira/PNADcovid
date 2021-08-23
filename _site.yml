@@ -1,0 +1,17 @@
+name: "PNADcovid"
+title: "PNADcovid"
+description: |
+  PNADcovid
+output_dir: "docs"
+navbar:
+  right:
+    - text: "Home"
+      href: index.html
+theme: theme.css
+output: 
+  distill::distill_article:
+    self_contained: false
+    toc: true
+    highlight: breezedark
+    includes:
+      before_body: backtotop.html
